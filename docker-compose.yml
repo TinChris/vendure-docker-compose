@@ -21,14 +21,18 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: vendure
-      DB_USERNAME: vendure
-      DB_PASSWORD: password
-      # falls euer Projekt andere Variablen nutzt, lass diese drin UND ergänze die obigen nicht doppelt
+      # vendure-config.ts liest:
+      # host: process.env.DATABASE_HOST
+      # port: process.env.DATABASE_PORT
+      # username: process.env.POSTGRES_USER
+      # password: process.env.POSTGRES_PASSWORD
       DATABASE_HOST: database
       DATABASE_PORT: 5432
+      POSTGRES_USER: vendure
+      POSTGRES_PASSWORD: password
+
+      # optional (für Cookies; deine config hat ein Default, aber so ist es sauber)
+      COOKIE_SECRET: "change-me-in-prod-please"
     ports:
       - "3000:3000"
     depends_on:
@@ -47,13 +51,10 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: vendure
-      DB_USERNAME: vendure
-      DB_PASSWORD: password
       DATABASE_HOST: database
       DATABASE_PORT: 5432
+      POSTGRES_USER: vendure
+      POSTGRES_PASSWORD: password
     depends_on:
       server:
         condition: service_healthy
