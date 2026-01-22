@@ -3,44 +3,63 @@ version: "3.8"
 services:
   database:
     image: postgres:15
-    restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: password
       POSTGRES_DB: vendure
+      POSTGRES_USER: vendure
+      POSTGRES_PASSWORD: password
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vendure || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U vendure -d vendure"]
+      interval: 5s
       timeout: 5s
-      retries: 15
+      retries: 20
+    restart: unless-stopped
 
   server:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: vendure
+      DB_USERNAME: vendure
+      DB_PASSWORD: password
+      # falls euer Projekt andere Variablen nutzt, lass diese drin UND ergänze die obigen nicht doppelt
+      DATABASE_HOST: database
+      DATABASE_PORT: 5432
+    ports:
+      - "3000:3000"
     depends_on:
       database:
         condition: service_healthy
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_HOST: database
-      DATABASE_PORT: 5432
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
     command: ["yarn", "start:server"]
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      database:
-        condition: service_healthy
     environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: vendure
+      DB_USERNAME: vendure
+      DB_PASSWORD: password
       DATABASE_HOST: database
       DATABASE_PORT: 5432
+    depends_on:
+      server:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    restart: unless-stopped
     command: ["yarn", "start:worker"]
 
   storefront:
@@ -49,15 +68,16 @@ services:
       dockerfile: Dockerfile-storefront
       args:
         STOREFRONT_VERSION: 0.3.1
-    restart: unless-stopped
-    depends_on:
-      - server
-    ports:
-      - "4000:4000"
     environment:
       SERVER_API_HOST: http://server
       SERVER_API_PORT: 3000
       SERVER_API_PATH: shop-api
+    ports:
+      - "4000:4000"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:
