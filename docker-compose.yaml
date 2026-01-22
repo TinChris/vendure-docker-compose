@@ -46,22 +46,22 @@ services:
     restart: unless-stopped
     command: ["yarn", "start:server"]
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      DATABASE_HOST: database
-      DATABASE_PORT: 5432
-      POSTGRES_USER: vendure
-      POSTGRES_PASSWORD: password
-    depends_on:
-      server:
-        condition: service_healthy
-      database:
-        condition: service_healthy
-    restart: unless-stopped
-    command: ["yarn", "start:worker"]
+  #worker:
+   # build:
+    #  context: .
+     # dockerfile: Dockerfile
+    # environment:
+      # DATABASE_HOST: database
+      # DATABASE_PORT: 5432
+      # POSTGRES_USER: vendure
+      # POSTGRES_PASSWORD: password
+    # depends_on:
+      # server:
+        # condition: service_healthy
+      # database:
+        # condition: service_healthy
+    # restart: unless-stopped
+    # command: ["yarn", "start:worker"]
 
   storefront:
     build:
