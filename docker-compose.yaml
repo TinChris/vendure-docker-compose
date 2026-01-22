@@ -1,50 +1,63 @@
-version: "3"
+version: "3.8"
+
 services:
+  database:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vendure
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vendure || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
   server:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
     ports:
-      - 3000:3000
-    command: ["./wait-for-it.sh", "database:5432", "--", "yarn", "start:server"]
-    volumes:
-      - /usr/src/app
+      - "3000:3000"
     environment:
       DATABASE_HOST: database
       DATABASE_PORT: 5432
-    depends_on:
-      - database
-      - worker
+    command: ["yarn", "start:server"]
+
   worker:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["./wait-for-it.sh", "database:5432", "--", "yarn", "start:worker"]
-    volumes:
-      - /usr/src/app
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
     environment:
       DATABASE_HOST: database
       DATABASE_PORT: 5432
-    depends_on:
-      - database
+    command: ["yarn", "start:worker"]
+
   storefront:
     build:
       context: .
       dockerfile: Dockerfile-storefront
       args:
         STOREFRONT_VERSION: 0.3.1
+    restart: unless-stopped
+    depends_on:
+      - server
     ports:
-      - 4000:4000
+      - "4000:4000"
     environment:
       SERVER_API_HOST: http://server
       SERVER_API_PORT: 3000
       SERVER_API_PATH: shop-api
-  database:
-    image: postgres
-    volumes:
-      - /var/lib/postgresql/data
-    ports:
-      - 5432:5432
-    environment:
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: vendure
+
+volumes:
+  pgdata:
